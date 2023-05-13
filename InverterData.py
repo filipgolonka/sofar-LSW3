@@ -14,7 +14,6 @@ import paho.mqtt.client as paho
 import os
 import configparser
 import datetime
-from influxdb import InfluxDBClient
 from datetime import datetime
 
 def twosComplement_hex(hexval, reg):
@@ -33,7 +32,6 @@ def PMetrics(mname, mtype, mlabel, mlvalue, pdata):
   line="# TYPE "+mname+" "+mtype+"\n"+mname+"{"+mlabel+"=\""+mlvalue+"\"} "+str(pdata)+"\n"
   PMData.append(line)
 
-# Prepare data to write do InfluxDB
 def PrepareInfluxData(IfData, fieldname, fieldvalue):
   IfData[0]["fields"][fieldname]=float(fieldvalue)
   return IfData
@@ -92,15 +90,15 @@ ha_mqtt_topic=configParser.get('HomeAssistant', 'ha_mqtt_topic')
 timestamp=str(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
 
 # Initialise InfluxDB support
-if influxdb=="1":
-  ifclient = InfluxDBClient(ifhost,ifport,ifuser,ifpass,ifdb);
-  InfluxData=[
-    {
-      "measurement": "InverterData",
-      "time": timestamp,
-      "fields": {}
-    }
-  ]
+# if influxdb=="1":
+  # ifclient = InfluxDBClient(ifhost,ifport,ifuser,ifpass,ifdb);
+  # InfluxData=[
+  #   {
+  #     "measurement": "InverterData",
+  #     "time": timestamp,
+  #     "fields": {}
+  #   }
+  # ]
 
 # PREPARE & SEND DATA TO THE INVERTER
 output="{" # initialise json output
@@ -215,7 +213,7 @@ if invstatus==1:
                 if hexpos!='0x0015' and hexpos!='0x0016' and hexpos!='0x0017' and hexpos!='0x0018':
                   if verbose=="1": print(hexpos+" - "+title+": "+str(response)+unit);
                   if prometheus=="1" and graph==1: PMetrics(metric_name, metric_type, label_name, label_value, response);
-                  if influxdb=="1" and graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, response);
+                  # if influxdb=="1" and graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, response);
                   if DomoticzSupport=="1" and DomoticzIdx>0: PrepareDomoticzData(DomoticzData, DomoticzIdx, response);
                   if HomeAssistantSupport=="1": HomeAssistantData.append([title, ratio, unit, metric_type, metric_name, label_name, label_value, response, register]);
                   if unit!="":
@@ -228,7 +226,7 @@ if invstatus==1:
                   if verbose=="1": print(hexpos+" - "+title+": "+str(response*ratio)+unit);
                   output=output+"\""+ title + " (" + unit + ")" + "\":" + str(totalpower)+","
                   if prometheus=="1" and graph==1: PMetrics(metric_name, metric_type, label_name, label_value, (totalpower*1000));
-                  if influxdb=="1" and graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, totalpower);
+                  # if influxdb=="1" and graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, totalpower);
                   if DomoticzSupport=="1" and DomoticzIdx>0: PrepareDomoticzData(DomoticzData, DomoticzIdx, response);
                   if HomeAssistantSupport=="1": HomeAssistantData.append([title, ratio, unit, metric_type, metric_name, label_name, label_value, response, (totalpower*1000)]);
                 if hexpos=='0x0017': totaltime+=response*ratio*65536;
@@ -237,7 +235,7 @@ if invstatus==1:
                   if verbose=="1": print(hexpos+" - "+title+": "+str(response*ratio)+unit);
                   output=output+"\""+ title + " (" + unit + ")" + "\":" + str(totaltime)+","
                   if prometheus=="1" and graph==1: PMetrics(metric_name, metric_type, label_name, label_value, totaltime);
-                  if influxdb=="1" and graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, totaltime);
+                  # if influxdb=="1" and graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, totaltime);
                   if DomoticzSupport=="1" and DomoticzIdx>0: PrepareDomoticzData(DomoticzData, DomoticzIdx, response);
                   if HomeAssistantSupport=="1": HomeAssistantData.append([title, ratio, unit, metric_type, metric_name, label_name, label_value, response, totaltime]);
         a+=1
@@ -260,9 +258,9 @@ if prometheus=="1" and invstatus==1:
   prometheus_file.close();
 
 # Write data to Influx DB (if offline - write 0 for each parameter)
-if influxdb=="1" and invstatus==1:
-  Write2InfluxDB(InfluxData)
-  if verbose=="1": print("Influx data: ", json.dumps(InfluxData, indent=4, sort_keys=False, ensure_ascii=False));
+# if influxdb=="1" and invstatus==1:
+#   Write2InfluxDB(InfluxData)
+#   if verbose=="1": print("Influx data: ", json.dumps(InfluxData, indent=4, sort_keys=False, ensure_ascii=False));
 if influxdb=="1" and invstatus==0:
   with open("./SOFARMap.xml", encoding="utf-8") as txtfile:
     parameters=json.loads(txtfile.read())
@@ -273,7 +271,7 @@ if influxdb=="1" and invstatus==0:
       label_value=item["label_value"]
       graph=item["graph"]
       if graph==1: PrepareInfluxData(InfluxData, metric_name.split('_')[0]+"_"+label_value, 0);
-  Write2InfluxDB(InfluxData)
+  # Write2InfluxDB(InfluxData)
   if verbose=="1": print("Influx data: ", json.dumps(InfluxData, indent=4, sort_keys=False, ensure_ascii=False))
 
 # MQTT integration (Domoticz, HA, pure MQTT)
